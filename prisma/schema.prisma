@@ -1,0 +1,124 @@
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLAYER
+  ADMIN
+  SUPERADMIN
+}
+
+enum EloLevel {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+  LEGENDARY
+}
+
+model User {
+  id             String     @id @default(uuid())
+  name           String
+  email          String     @unique
+  password       String
+  role           Role       @default(PLAYER)
+  eloPoints      Int        @default(0)
+  eloLevel       EloLevel   @default(BRONZE)
+  reviewCount    Int        @default(0)
+  averageRating  Float      @default(0.0)
+  notifications  Notification[]
+  reviewsWritten Review[]   @relation("reviews_written")
+  reservations   Reservation[]
+  createdAt      DateTime   @default(now())
+
+  Review          Review[] @relation("reviews_received")
+
+  Team Team[]
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  reviewerId String
+  playerId   String
+  rating     Int
+  comment    String
+  reviewer   User     @relation("reviews_written", fields: [reviewerId], references: [id])
+  player     User     @relation("reviews_received", fields: [playerId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  isRead    Boolean  @default(false)
+  sentAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Team {
+  id            String   @id @default(uuid())
+  name          String
+  tournamentId  String?
+  captainId     String
+  members       String[] // Store member IDs as an array of strings
+  score         Int
+  tournament    Tournament? @relation(fields: [tournamentId], references: [id])
+  captain       User? @relation(fields: [captainId], references: [id])
+}
+
+model Match {
+  id           String   @id @default(uuid())
+  tournamentId String
+  teamAId      String
+  teamBId      String
+  stadiumId    String
+  matchDate    DateTime
+  scoreTeamA   Int
+  scoreTeamB   Int
+  status       String
+}
+
+model Stadium {
+  id            String   @id @default(uuid())
+  name          String
+  location      String
+  capacity      Int
+  imagePath     String
+  pricePerHour  Float
+  ownerId       String
+  reservations  Reservation[]
+  tournaments   Tournament[]
+}
+
+model Reservation {
+  id          String   @id @default(uuid())
+  stadiumId   String
+  playerId    String
+  startTime   DateTime
+  endTime     DateTime
+  status      String
+  stadium     Stadium  @relation(fields: [stadiumId], references: [id])
+  user        User     @relation(fields: [playerId], references: [id])
+}
+
+model Tournament {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  stadiumId   String
+  ownerId     String
+  startDate   DateTime
+  endDate     DateTime
+  status      String
+  prizePool   Float
+  stadium     Stadium  @relation(fields: [stadiumId], references: [id])
+  teams       Team[]
+  
+}
